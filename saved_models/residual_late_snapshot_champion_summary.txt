@@ -1,0 +1,210 @@
+Residual Late Snapshot Champion Model
+
+Artifact Notes
+  This saved artifact is a full-history refit of the current champion spec.
+  The performance metrics below come from the walk-forward backtest, not from the refit artifact itself.
+
+Spec
+  model_family: xgboost residual-over-market regressor + logistic calibrator
+  snapshot: late
+  market_prob_col: mean_implied_prob
+  edge_filter_for_export: >= 0.02
+  odds_cap_for_export: <= +1000
+  walk_forward_windows: [('2025-07-01', '2025-07-31'), ('2025-08-01', '2025-08-31'), ('2025-09-01', '2025-10-01')]
+  statcast_ranges: [('2023-05-03', '2023-10-01'), ('2024-03-28', '2024-09-29'), ('2025-03-27', '2025-10-01')]
+
+Refit Artifact Training Range
+  train_start: 2023-05-22
+  train_end: 2025-09-28
+  training_rows: 91613
+  base_train_rows: 71901
+  calibration_rows: 19712
+  calibration_start: 2025-06-21
+  calibration_end: 2025-09-28
+
+Walk-Forward Performance
+  exported_bets: 500
+  total_profit: 42.97
+  observed_roi: 0.085940
+  bootstrap_ci_5: -0.092183
+  bootstrap_ci_25: 0.013595
+  bootstrap_ci_50: 0.088640
+  bootstrap_ci_75: 0.163710
+  bootstrap_ci_95: 0.272286
+  bootstrap_samples: 2000
+  bet_days: 82
+  mean_bets_per_day: 6.097561
+  median_bets_per_day: 6.000000
+  max_bets_per_day: 14
+  min_bets_per_day: 1
+  mean_profit_per_day: 0.524024
+  median_profit_per_day: -1.450000
+  max_drawdown_units: -31.65
+  max_drawdown_date: 2025-09-17
+
+Preferred Bankroll Overlay
+  preferred_bankroll_strategy: edge_0.75_1.00_1.75
+  total_profit_units: 66.71
+  ending_bankroll_units: 166.72
+  observed_roi: 0.112315
+  max_drawdown_units: -37.28
+  max_drawdown_date: 2025-09-21
+
+Preferred Filter Overlay
+  preferred_bucket_filter_strategy: only_401_to_500_and_701_to_1000
+  filtered_bets: 221
+  filtered_total_profit: 61.15
+  filtered_observed_roi: 0.276697
+  filtered_bootstrap_ci_5: -0.054118
+  filtered_bootstrap_ci_25: 0.135464
+  filtered_bootstrap_ci_50: 0.272059
+  filtered_bootstrap_ci_75: 0.414932
+  filtered_bootstrap_ci_95: 0.605158
+  filtered_bet_days: 74
+  filtered_mean_bets_per_day: 2.986486
+  filtered_median_bets_per_day: 3.000000
+  filtered_best_bankroll_strategy_from_grid: edge_0.50_1.00_1.75
+  filtered_bankroll_profit_units: 81.89
+  filtered_ending_bankroll_units: 181.89
+  filtered_bankroll_roi: 0.365978
+  filtered_max_drawdown_units: -18.00
+  filtered_max_drawdown_date: 2025-09-13
+
+Filter Strategy Comparison
+  baseline_all_le_1000: bets=500 profit=42.97 roi=0.085940
+  only_401_to_500_and_701_to_1000: bets=221 profit=61.15 roi=0.276697
+  only_401_to_1000: bets=347 profit=61.45 roi=0.177089
+
+Preferred Filter Bankroll Comparison
+  flat_1u: profit=61.15u ending_bankroll=161.15u roi=0.276697 max_drawdown=-20.00u
+  edge_0.50_1.00_1.50: profit=72.43u ending_bankroll=172.43u roi=0.347362 max_drawdown=-17.50u
+  edge_0.50_1.00_1.75: profit=81.89u ending_bankroll=181.89u roi=0.365978 max_drawdown=-18.00u
+
+Bankroll Comparison
+  flat_1u: profit=42.97u ending_bankroll=142.97u roi=0.085940 max_drawdown=-31.65u
+  edge_0.50_1.00_1.50: profit=50.96u ending_bankroll=150.96u roi=0.100315 max_drawdown=-34.35u
+  edge_0.75_1.00_1.75: profit=66.71u ending_bankroll=166.72u roi=0.112315 max_drawdown=-37.28u
+
+Residual Walk-Forward Fold Metrics
+  Fold 1: bets=5625 roc_auc=0.620919 brier=0.101024 avg_pred=0.120368 avg_market_prob=0.162799
+  Fold 2: bets=6205 roc_auc=0.629954 brier=0.106467 avg_pred=0.115631 avg_market_prob=0.158563
+  Fold 3: bets=5891 roc_auc=0.610268 brier=0.102307 avg_pred=0.116464 avg_market_prob=0.153417
+
+Residual Export Bet Folds
+  Fold 1: bets=186 wins=34 win_rate=0.182796 profit=16.87 roi=0.090699
+  Fold 2: bets=159 wins=30 win_rate=0.188679 profit=18.80 roi=0.118239
+  Fold 3: bets=155 wins=27 win_rate=0.174194 profit=7.30 roi=0.047097
+
+Residual Export Odds Buckets
+  +701 to +1000: bets=118 profit=34.70 roi=0.294068
+  +401 to +500: bets=103 profit=26.45 roi=0.256796
+  +501 to +700: bets=126 profit=0.30 roi=0.002381
+  +301 to +400: bets=80 profit=-2.80 roi=-0.035000
+  +201 to +300: bets=52 profit=-2.95 roi=-0.056731
+  <= +200: bets=21 profit=-12.73 roi=-0.606190
+  +1001 to +2000: bets=0 profit=0.00 roi=nan
+  > +2000: bets=0 profit=0.00 roi=nan
+
+XGBoost Params
+  base_score: None
+  booster: None
+  callbacks: None
+  colsample_bylevel: None
+  colsample_bynode: None
+  colsample_bytree: 0.8
+  device: None
+  early_stopping_rounds: None
+  enable_categorical: False
+  eval_metric: None
+  feature_types: None
+  feature_weights: None
+  gamma: None
+  grow_policy: None
+  importance_type: None
+  interaction_constraints: None
+  learning_rate: 0.05
+  max_bin: None
+  max_cat_threshold: None
+  max_cat_to_onehot: None
+  max_delta_step: None
+  max_depth: 4
+  max_leaves: None
+  min_child_weight: None
+  missing: nan
+  monotone_constraints: None
+  multi_strategy: None
+  n_estimators: 300
+  n_jobs: -1
+  num_parallel_tree: None
+  objective: reg:squarederror
+  random_state: 42
+  reg_alpha: None
+  reg_lambda: None
+  sampling_method: None
+  scale_pos_weight: None
+  subsample: 0.8
+  tree_method: None
+  validate_parameters: None
+  verbosity: None
+
+Calibrator Params
+  C: 1.0
+  class_weight: None
+  dual: False
+  fit_intercept: True
+  intercept_scaling: 1
+  l1_ratio: 0.0
+  max_iter: 1000
+  n_jobs: None
+  penalty: deprecated
+  random_state: 42
+  solver: lbfgs
+  tol: 0.0001
+  verbose: 0
+  warm_start: False
+
+Feature Count: 43
+Features
+  season
+  expected_pa
+  rolling_pa_15
+  rolling_pa_30
+  rolling_hr_15
+  rolling_hr_30
+  rolling_hr_rate_30
+  rolling_barrel_30
+  rolling_hardhit_30
+  rolling_ev_30
+  rolling_max_ev_30
+  rolling_pull_rate_30
+  rolling_flyball_rate_30
+  rolling_xslg_30
+  rolling_slg_30
+  rolling_avg_30
+  rolling_iso_30
+  career_hr_rate
+  season_hr_rate
+  rolling_pitcher_hr_30
+  rolling_pitcher_hr_30_vs_batter_side
+  is_same_hand_matchup
+  is_platoon_matchup
+  park_hr_factor_by_hand
+  hr_power_form
+  park_power
+  matchup_power
+  barrel_env
+  temperature_f
+  wind_speed_mph
+  humidity
+  roof_closed
+  weather_missing_raw
+  wind_out
+  wind_in
+  crosswind
+  temperature_x_wind
+  wind_out_effect
+  wind_in_effect
+  temperature_sq
+  market_implied_prob
+  mean_implied_prob
+  books_available
