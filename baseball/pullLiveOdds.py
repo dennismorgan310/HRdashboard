@@ -8,13 +8,14 @@ import pandas as pd
 import requests
 
 
-API_KEY_PATH = Path("apiKey.txt")
+BASE_DIR = Path(__file__).resolve().parent
+API_KEY_PATH = BASE_DIR / "apiKey.txt"
 BASE_URL = "https://api.the-odds-api.com/v4"
 SPORT = "baseball_mlb"
 DEFAULT_REGIONS = "us"
 DEFAULT_MARKET = "batter_home_runs"
 DEFAULT_ODDS_FORMAT = "american"
-DEFAULT_OUTPUT_DIR = Path("live_odds")
+DEFAULT_OUTPUT_DIR = BASE_DIR / "live_odds"
 
 
 def _read_api_key_from_streamlit_secrets() -> str | None:

@@ -37,12 +37,13 @@ try:
 except Exception:
     pass
 
-MODEL_BUNDLE_PATH = Path("saved_models/residual_late_snapshot_champion.pkl")
-HISTORICAL_WEATHER_PATH = Path("weather_from_odds.parquet")
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_BUNDLE_PATH = BASE_DIR / "saved_models/residual_late_snapshot_champion.pkl"
+HISTORICAL_WEATHER_PATH = BASE_DIR / "weather_from_odds.parquet"
 MLB_STATS_API_BASE = "https://statsapi.mlb.com/api/v1"
 DEFAULT_STATCAST_START_YEAR = 2023
 DEFAULT_BOOKMAKERS = "draftkings,fanduel,betmgm,caesars,betrivers,espnbet,novig,prophetx"
-LIVE_FEATURE_CACHE_DIR = Path("live_feature_cache")
+LIVE_FEATURE_CACHE_DIR = BASE_DIR / "live_feature_cache"
 LIVE_BATTER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_batter_features.parquet"
 LIVE_PITCHER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_pitcher_features.parquet"
 LIVE_PITCHER_SPLIT_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_pitcher_split_features.parquet"
