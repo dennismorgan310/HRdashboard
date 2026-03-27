@@ -33,6 +33,44 @@ def _read_api_key_from_streamlit_secrets() -> str | None:
     return None
 
 
+def get_api_key_diagnostics(path: Path = API_KEY_PATH) -> dict:
+    env_keys_present = {
+        env_key: bool(os.getenv(env_key, "").strip())
+        for env_key in ("ODDS_API_KEY", "THE_ODDS_API_KEY")
+    }
+
+    secret_keys_present = {}
+    try:
+        import streamlit as st
+    except Exception:
+        st = None
+
+    for key in ("ODDS_API_KEY", "THE_ODDS_API_KEY", "odds_api_key", "the_odds_api_key"):
+        if st is None:
+            secret_keys_present[key] = False
+            continue
+        try:
+            value = st.secrets[key]
+        except Exception:
+            value = None
+        secret_keys_present[key] = bool(str(value).strip()) if value is not None else False
+
+    return {
+        "env_keys_present": env_keys_present,
+        "secret_keys_present": secret_keys_present,
+        "api_key_file_exists": path.exists(),
+        "resolved_source": (
+            "env"
+            if any(env_keys_present.values())
+            else "streamlit_secrets"
+            if any(secret_keys_present.values())
+            else "file"
+            if path.exists()
+            else "missing"
+        ),
+    }
+
+
 def read_api_key(path: Path = API_KEY_PATH) -> str:
     for env_key in ("ODDS_API_KEY", "THE_ODDS_API_KEY"):
         value = os.getenv(env_key)

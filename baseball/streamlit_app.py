@@ -19,9 +19,17 @@ from live_dashboard_utils import (
     score_live_candidates,
 )
 from pullOddsShopperLive import fetch_oddsshopper_live_hr_odds
+from pullLiveOdds import get_api_key_diagnostics
 
 
 st.set_page_config(page_title="MLB HR Dashboard", layout="wide")
+
+with st.expander("Odds API Diagnostics", expanded=False):
+    odds_api_diag = get_api_key_diagnostics()
+    st.write("Resolved source:", odds_api_diag["resolved_source"])
+    st.write("Secrets found:", odds_api_diag["secret_keys_present"])
+    st.write("Env found:", odds_api_diag["env_keys_present"])
+    st.write("Local apiKey.txt exists:", odds_api_diag["api_key_file_exists"])
 
 ODDS_BUCKET_BINS = [-10_000, 200, 300, 400, 500, 700, 1000, 2000, 10_000]
 ODDS_BUCKET_LABELS = [
