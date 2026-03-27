@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+pyarrow
+requests
+pybaseball
+scikit-learn
+xgboost
+selenium
+tqdm

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+apiKey.txt
+oddshopperLogin.txt
+oddshopper_cookies.json
+oddshopper_cookie_header.txt
+live_odds/
