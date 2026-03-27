@@ -71,7 +71,10 @@ def get_api_key_diagnostics(path: Path = API_KEY_PATH) -> dict:
     }
 
 
-def read_api_key(path: Path = API_KEY_PATH) -> str:
+def read_api_key(path: Path = API_KEY_PATH, api_key_override: str | None = None) -> str:
+    if api_key_override and api_key_override.strip():
+        return api_key_override.strip()
+
     for env_key in ("ODDS_API_KEY", "THE_ODDS_API_KEY"):
         value = os.getenv(env_key)
         if value and value.strip():
@@ -244,8 +247,9 @@ def fetch_live_hr_odds(
     commence_time_from: str | None = None,
     event_ids: str | None = None,
     api_key_path: Path = API_KEY_PATH,
+    api_key_override: str | None = None,
 ) -> pd.DataFrame:
-    api_key = read_api_key(api_key_path)
+    api_key = read_api_key(api_key_path, api_key_override=api_key_override)
     snapshot_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     requested_markets = {

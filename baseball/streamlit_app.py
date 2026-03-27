@@ -75,6 +75,7 @@ def pull_odds_cached(
     odds_source: str,
     oddsshopper_state: str,
     oddsshopper_browser_session: bool,
+    manual_odds_api_key: str,
 ):
     parts = []
     if odds_source in {"Odds API", "Both"}:
@@ -82,6 +83,7 @@ def pull_odds_cached(
             bookmakers=bookmakers or None,
             snapshot_label="live",
             target_date=target_date,
+            api_key_override=manual_odds_api_key or None,
         )
         if not odds_api_df.empty:
             parts.append(odds_api_df)
@@ -148,6 +150,12 @@ with st.sidebar:
         value=False,
         help="Logs into OddsShopper in Chrome and fetches the odds API from that same browser session.",
     )
+    manual_odds_api_key = st.text_input(
+        "Odds API key override",
+        value="",
+        type="password",
+        help="Temporary fallback if Streamlit secrets are not being picked up. Leave blank to use secrets/env/file.",
+    )
     boost_book = st.text_input("Boost bookmaker", value="draftkings")
     boost_pct = st.number_input("Boost percent", min_value=0.0, max_value=200.0, value=0.0, step=5.0)
     min_edge = st.number_input("Min edge %", min_value=-20.0, max_value=100.0, value=0.0, step=0.5)
@@ -199,6 +207,7 @@ if pull_odds_button:
             odds_source,
             oddsshopper_state,
             oddsshopper_browser_session,
+            manual_odds_api_key,
         )
         st.session_state["odds_raw_df"] = odds_raw_df
         st.session_state["odds_features_df"] = odds_features_df
