@@ -359,6 +359,7 @@ edited_df = st.data_editor(
     column_config={
         "select": st.column_config.CheckboxColumn("Select"),
         "game_date": st.column_config.DateColumn("Date"),
+        "game_time_et": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
         "game_time_utc": st.column_config.DatetimeColumn("First pitch UTC"),
         "model_prob": st.column_config.NumberColumn("Model %", format="%.3f"),
         "best_book_implied_prob": st.column_config.NumberColumn("Book %", format="%.3f"),

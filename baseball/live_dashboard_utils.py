@@ -789,6 +789,8 @@ def build_ranked_bets_table(
 
     if "game_time_utc" not in ranked.columns and "best_game_time_utc" in ranked.columns:
         ranked["game_time_utc"] = ranked["best_game_time_utc"]
+    if "game_time_utc" in ranked.columns:
+        ranked["game_time_et"] = pd.to_datetime(ranked["game_time_utc"], utc=True, errors="coerce").dt.tz_convert("America/New_York")
     if "player_name" not in ranked.columns:
         ranked["player_name"] = np.nan
     if "best_player_name" in ranked.columns:
@@ -805,6 +807,7 @@ def build_ranked_bets_table(
 
     keep_cols = [
         "game_date",
+        "game_time_et",
         "game_time_utc",
         "player_name",
         "home_team",
@@ -876,6 +879,8 @@ def build_all_loaded_bets_table(
         how="inner",
     )
 
+    if "game_time_utc" in all_bets.columns:
+        all_bets["game_time_et"] = pd.to_datetime(all_bets["game_time_utc"], utc=True, errors="coerce").dt.tz_convert("America/New_York")
     if "player_name" not in all_bets.columns:
         all_bets["player_name"] = np.nan
     if "player" in all_bets.columns:
@@ -889,6 +894,7 @@ def build_all_loaded_bets_table(
 
     keep_cols = [
         "game_date",
+        "game_time_et",
         "game_time_utc",
         "player_name",
         "home_team",
