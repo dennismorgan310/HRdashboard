@@ -155,8 +155,9 @@ def load_incremental_statcast_history_for_live(
         return fresh_df
 
     cached_start = pd.Timestamp(cached_df["game_date"].min()).date()
-    expected_start = max(date(start_year, 1, 1), date(start_year, 3, 1))
-    if cached_start > expected_start:
+    # Early March often has no Statcast rows yet, so only treat the cache as incompatible
+    # when it starts in a later season than the requested start year.
+    if cached_start.year > start_year:
         fresh_df = load_statcast_history_for_live(target_date=target_date, start_year=start_year)
         save_cached_statcast_history(fresh_df, cache_path=cache_path)
         return fresh_df
