@@ -43,6 +43,15 @@ HISTORICAL_WEATHER_PATH = BASE_DIR / "weather_from_odds.parquet"
 MLB_STATS_API_BASE = "https://statsapi.mlb.com/api/v1"
 DEFAULT_STATCAST_START_YEAR = 2023
 DEFAULT_BOOKMAKERS = "draftkings,fanduel,betmgm,caesars,betrivers,espnbet,novig,prophetx"
+ROSTER_TYPE_PRIORITY = {
+    "gameday": 0,
+    "active": 1,
+    "depthChart": 2,
+    "40Man": 3,
+    "fullRoster": 4,
+    "fullSeason": 5,
+    "nonRosterInvitees": 6,
+}
 LIVE_FEATURE_CACHE_DIR = BASE_DIR / "live_feature_cache"
 LIVE_BATTER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_batter_features.parquet"
 LIVE_PITCHER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_pitcher_features.parquet"
@@ -351,7 +360,8 @@ def fetch_team_roster(
         params={"rosterType": roster_type, "date": target_date.isoformat()},
         timeout=timeout,
     )
-    response.raise_for_status()
+    if not response.ok:
+        return pd.DataFrame()
     payload = response.json()
 
     rows = []
@@ -378,7 +388,7 @@ def build_game_roster_map(matchups_df: pd.DataFrame, target_date: date) -> pd.Da
         for team_side, team_id, team_abbr in side_specs:
             if pd.isna(team_id):
                 continue
-            for roster_type in ["active", "40Man"]:
+            for roster_type in ["gameday", "active", "depthChart", "40Man", "fullRoster", "fullSeason", "nonRosterInvitees"]:
                 roster_df = fetch_team_roster(int(team_id), target_date=target_date, roster_type=roster_type)
                 if roster_df.empty:
                     continue
@@ -388,17 +398,20 @@ def build_game_roster_map(matchups_df: pd.DataFrame, target_date: date) -> pd.Da
                 roster_df["scheduled_game_no"] = row.scheduled_game_no
                 roster_df["batting_team"] = team_abbr
                 roster_df["team_side"] = team_side
+                roster_df["roster_priority"] = roster_df["roster_type"].map(ROSTER_TYPE_PRIORITY).fillna(999)
                 roster_rows.append(roster_df)
 
     if not roster_rows:
         return pd.DataFrame()
 
-    roster_map = pd.concat(roster_rows, ignore_index=True).drop_duplicates()
-    duplicate_mask = roster_map.duplicated(
-        subset=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
-        keep=False,
+    roster_map = pd.concat(roster_rows, ignore_index=True)
+    roster_map = roster_map.sort_values(
+        ["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm", "roster_priority", "roster_type"]
     )
-    roster_map = roster_map.loc[~duplicate_mask].copy()
+    roster_map = roster_map.drop_duplicates(
+        subset=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
+        keep="first",
+    ).reset_index(drop=True)
     return roster_map
 
 
