@@ -496,6 +496,10 @@ def build_live_candidate_rows(
         else:
             candidates[col] = candidates[hist_col]
 
+    if "player_name" not in candidates.columns:
+        candidates["player_name"] = np.nan
+    if "player" in candidates.columns:
+        candidates["player_name"] = candidates["player_name"].fillna(candidates["player"])
     candidates["player_name"] = candidates["player_name"]
     candidates["batter"] = candidates["batter"]
     candidates["stand"] = candidates["stand"]
