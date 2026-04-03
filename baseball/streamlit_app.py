@@ -143,11 +143,11 @@ with st.sidebar:
         help="Leave blank for all. Use R for regular season, S for spring.",
     )
     bookmakers = st.text_input("Bookmakers", value=DEFAULT_BOOKMAKERS)
-    odds_source = st.selectbox("Odds source", ["Odds API", "OddsShopper", "Both"], index=0)
+    odds_source = st.selectbox("Odds source", ["Odds API", "OddsShopper", "Both"], index=1)
     oddsshopper_state = st.text_input("OddsShopper state", value="PA")
     oddsshopper_browser_session = st.checkbox(
         "Use browser session for OddsShopper",
-        value=False,
+        value=True,
         help="Logs into OddsShopper in Chrome and fetches the odds API from that same browser session.",
     )
     manual_odds_api_key = st.text_input(
@@ -158,11 +158,11 @@ with st.sidebar:
     )
     boost_book = st.text_input("Boost bookmaker", value="draftkings")
     boost_pct = st.number_input("Boost percent", min_value=0.0, max_value=200.0, value=0.0, step=5.0)
-    min_edge = st.number_input("Min edge %", min_value=-20.0, max_value=100.0, value=0.0, step=0.5)
+    min_edge = st.number_input("Min edge %", min_value=-20.0, max_value=100.0, value=2.0, step=0.5)
     min_books = st.number_input("Min books", min_value=1, max_value=20, value=1, step=1)
     use_preferred_buckets = st.checkbox(
         "Limit to preferred buckets",
-        value=False,
+        value=True,
         help="Use the preferred live filter from backtesting: +401 to +500 and +701 to +1000.",
     )
 
@@ -348,7 +348,31 @@ if use_preferred_buckets:
 st.dataframe(all_bets_df, use_container_width=True, hide_index=True)
 
 st.subheader("Best Bets")
-display_df = filtered_df.copy()
+display_df = filtered_df.copy().reset_index(drop=True)
+display_df["Pitcher"] = display_df.apply(
+    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name"),
+    axis=1,
+)
+display_df["best_book_boosted_odds"] = display_df["best_book_odds"]
+display_df = display_df.drop(columns=[
+    "game_date",
+    "game_time_utc",
+    "home_team",
+    "away_team",
+    "best_book",
+    "boost_applied",
+    "p_throws",
+    "opposing_pitcher_name",
+    "best_book_odds",
+], errors="ignore")
+display_df = display_df.rename(columns={
+    "player_name": "Player",
+    "game_time_et": "First pitch ET",
+    "batting_team": "Team",
+    "wind_direction": "Wind Dir",
+    "best_book_raw_odds": "Raw Odds",
+    "best_book_boosted_odds": "Boosted Odds",
+})
 display_df.insert(0, "select", False)
 
 edited_df = st.data_editor(
@@ -358,9 +382,7 @@ edited_df = st.data_editor(
     num_rows="fixed",
     column_config={
         "select": st.column_config.CheckboxColumn("Select"),
-        "game_date": st.column_config.DateColumn("Date"),
-        "game_time_et": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
-        "game_time_utc": st.column_config.DatetimeColumn("First pitch UTC"),
+        "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
         "model_prob": st.column_config.NumberColumn("Model %", format="%.3f"),
         "best_book_implied_prob": st.column_config.NumberColumn("Book %", format="%.3f"),
         "edge_best_book": st.column_config.NumberColumn("Edge", format="%.3f"),
@@ -371,11 +393,11 @@ edited_df = st.data_editor(
     disabled=[c for c in display_df.columns if c != "select"],
 )
 
-selected_rows = edited_df[edited_df["select"]].copy()
-if len(selected_rows) > 1:
+selected_positions = edited_df.index[edited_df["select"]].tolist()
+if len(selected_positions) > 1:
     st.warning("Select one bet to populate the copy box.")
 
-selected_row = selected_rows.iloc[0] if len(selected_rows) == 1 else filtered_df.iloc[0]
+selected_row = filtered_df.iloc[selected_positions[0]] if len(selected_positions) == 1 else filtered_df.iloc[0]
 
 st.subheader("Copy Box")
 social_text = format_bet_for_social(selected_row)
