@@ -48,6 +48,7 @@ LIVE_BATTER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_batter_features.par
 LIVE_PITCHER_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_pitcher_features.parquet"
 LIVE_PITCHER_SPLIT_FEATURES_PATH = LIVE_FEATURE_CACHE_DIR / "latest_pitcher_split_features.parquet"
 LIVE_FEATURE_METADATA_PATH = LIVE_FEATURE_CACHE_DIR / "metadata.json"
+STATCAST_HISTORY_CACHE_PATH = LIVE_FEATURE_CACHE_DIR / "statcast_history.parquet"
 
 
 def load_model_bundle(path: Path = MODEL_BUNDLE_PATH) -> dict:
@@ -59,6 +60,24 @@ def current_mlb_season_start(target_date: date) -> date:
     return date(target_date.year, 3, 1)
 
 
+def build_statcast_ranges_between(
+    start_date: date,
+    end_date: date,
+) -> list[tuple[str, str]]:
+    if end_date < start_date:
+        return []
+
+    ranges = []
+    for year in range(start_date.year, end_date.year + 1):
+        season_start = date(year, 3, 1)
+        season_end = date(year, 11, 15)
+        start = max(start_date, season_start)
+        end = min(end_date, season_end)
+        if start <= end:
+            ranges.append((start.isoformat(), end.isoformat()))
+    return ranges
+
+
 def build_statcast_ranges(
     target_date: date,
     start_year: int = DEFAULT_STATCAST_START_YEAR,
@@ -66,14 +85,10 @@ def build_statcast_ranges(
     end_date = target_date - timedelta(days=1)
     if end_date < date(start_year, 1, 1):
         return []
-
-    ranges = []
-    for year in range(start_year, target_date.year + 1):
-        start = max(date(year, 3, 1), date(start_year, 1, 1))
-        end = min(date(year, 11, 15), end_date)
-        if start <= end:
-            ranges.append((start.isoformat(), end.isoformat()))
-    return ranges
+    return build_statcast_ranges_between(
+        start_date=max(date(start_year, 1, 1), date(start_year, 3, 1)),
+        end_date=end_date,
+    )
 
 
 def load_statcast_history_for_live(
@@ -96,6 +111,73 @@ def load_statcast_history_for_live(
     data = pd.concat(parts, ignore_index=True)
     data["game_date"] = pd.to_datetime(data["game_date"])
     return data
+
+
+def _normalize_statcast_history_df(statcast_df: pd.DataFrame) -> pd.DataFrame:
+    if statcast_df is None or statcast_df.empty:
+        return pd.DataFrame()
+    normalized = statcast_df.copy()
+    normalized["game_date"] = pd.to_datetime(normalized["game_date"])
+    subset = [col for col in ["game_pk", "at_bat_number", "pitch_number", "batter", "pitcher"] if col in normalized.columns]
+    if subset:
+        normalized = normalized.drop_duplicates(subset=subset, keep="last")
+    else:
+        normalized = normalized.drop_duplicates()
+    return normalized.sort_values([col for col in ["game_date", "game_pk", "at_bat_number", "pitch_number"] if col in normalized.columns]).reset_index(drop=True)
+
+
+def load_cached_statcast_history(cache_path: Path = STATCAST_HISTORY_CACHE_PATH) -> pd.DataFrame:
+    if not cache_path.exists():
+        return pd.DataFrame()
+    return _normalize_statcast_history_df(pd.read_parquet(cache_path))
+
+
+def save_cached_statcast_history(statcast_df: pd.DataFrame, cache_path: Path = STATCAST_HISTORY_CACHE_PATH) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    normalized = _normalize_statcast_history_df(statcast_df)
+    normalized.to_parquet(cache_path, index=False)
+
+
+def load_incremental_statcast_history_for_live(
+    target_date: date,
+    start_year: int = DEFAULT_STATCAST_START_YEAR,
+    cache_path: Path = STATCAST_HISTORY_CACHE_PATH,
+    force_full_refresh: bool = False,
+) -> pd.DataFrame:
+    end_date = target_date - timedelta(days=1)
+    if end_date < date(start_year, 1, 1):
+        return pd.DataFrame()
+
+    cached_df = pd.DataFrame() if force_full_refresh else load_cached_statcast_history(cache_path)
+    if cached_df.empty:
+        fresh_df = load_statcast_history_for_live(target_date=target_date, start_year=start_year)
+        save_cached_statcast_history(fresh_df, cache_path=cache_path)
+        return fresh_df
+
+    cached_start = pd.Timestamp(cached_df["game_date"].min()).date()
+    expected_start = max(date(start_year, 1, 1), date(start_year, 3, 1))
+    if cached_start > expected_start:
+        fresh_df = load_statcast_history_for_live(target_date=target_date, start_year=start_year)
+        save_cached_statcast_history(fresh_df, cache_path=cache_path)
+        return fresh_df
+
+    cached_end = pd.Timestamp(cached_df["game_date"].max()).date()
+    if cached_end >= end_date:
+        return cached_df
+
+    ranges = build_statcast_ranges_between(start_date=cached_end + timedelta(days=1), end_date=end_date)
+    if not ranges:
+        return cached_df
+
+    parts = [cached_df]
+    for start_dt, end_dt in ranges:
+        part = statcast(start_dt=start_dt, end_dt=end_dt)
+        if part is not None and not part.empty:
+            parts.append(part)
+
+    combined = _normalize_statcast_history_df(pd.concat(parts, ignore_index=True))
+    save_cached_statcast_history(combined, cache_path=cache_path)
+    return combined
 
 
 def build_historical_feature_tables(
@@ -172,12 +254,27 @@ def save_precomputed_live_feature_cache(
     latest_pitcher_df.to_parquet(pitcher_path, index=False)
     latest_pitcher_split_df.to_parquet(pitcher_split_path, index=False)
 
+    statcast_history_path = cache_dir / STATCAST_HISTORY_CACHE_PATH.name
+    statcast_history_rows = None
+    statcast_history_through = None
+    if statcast_history_path.exists():
+        try:
+            statcast_history_df = pd.read_parquet(statcast_history_path, columns=["game_date"])
+            statcast_history_rows = int(len(statcast_history_df))
+            if not statcast_history_df.empty:
+                statcast_history_through = pd.to_datetime(statcast_history_df["game_date"]).max().date().isoformat()
+        except Exception:
+            statcast_history_rows = None
+            statcast_history_through = None
+
     metadata = {
         "built_for_target_date": target_date.isoformat(),
         "built_at_utc": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "latest_batter_rows": int(len(latest_batter_df)),
         "latest_pitcher_rows": int(len(latest_pitcher_df)),
         "latest_pitcher_split_rows": int(len(latest_pitcher_split_df)),
+        "statcast_history_rows": statcast_history_rows,
+        "statcast_history_through": statcast_history_through,
     }
     metadata_path.write_text(json.dumps(metadata, indent=2))
     return metadata
@@ -215,10 +312,13 @@ def build_and_save_live_feature_cache(
     start_year: int = DEFAULT_STATCAST_START_YEAR,
     historical_weather_path: Path = HISTORICAL_WEATHER_PATH,
     cache_dir: Path = LIVE_FEATURE_CACHE_DIR,
+    force_full_refresh: bool = False,
 ) -> dict:
-    statcast_df = load_statcast_history_for_live(
+    statcast_df = load_incremental_statcast_history_for_live(
         target_date=target_date,
         start_year=start_year,
+        cache_path=cache_dir / STATCAST_HISTORY_CACHE_PATH.name,
+        force_full_refresh=force_full_refresh,
     )
     game_df, pitcher_df, pitcher_split_df = build_historical_feature_tables(
         statcast_df=statcast_df,
