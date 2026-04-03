@@ -744,6 +744,7 @@ def build_ranked_bets_table(
         .head(1)
         .rename(
             columns={
+                "player": "best_player_name",
                 "bookmaker": "best_book",
                 "bookmaker_title": "best_book_title",
                 "price": "best_book_raw_odds",
@@ -761,6 +762,7 @@ def build_ranked_bets_table(
             "away_team",
             "scheduled_game_no",
             "player_name_norm",
+            "best_player_name",
             "best_game_time_utc",
             "best_book",
             "best_book_title",
@@ -774,6 +776,10 @@ def build_ranked_bets_table(
 
     if "game_time_utc" not in ranked.columns and "best_game_time_utc" in ranked.columns:
         ranked["game_time_utc"] = ranked["best_game_time_utc"]
+    if "player_name" not in ranked.columns:
+        ranked["player_name"] = np.nan
+    if "best_player_name" in ranked.columns:
+        ranked["player_name"] = ranked["player_name"].fillna(ranked["best_player_name"])
 
     ranked["edge_best_book"] = ranked["model_prob"] - ranked["best_book_implied_prob"]
     ranked["expected_profit_per_unit"] = (
@@ -845,6 +851,7 @@ def build_all_loaded_bets_table(
             "away_team",
             "scheduled_game_no",
             "player_name_norm",
+            "player",
             "bookmaker",
             "bookmaker_title",
             "price",
@@ -855,6 +862,11 @@ def build_all_loaded_bets_table(
         on=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
         how="inner",
     )
+
+    if "player_name" not in all_bets.columns:
+        all_bets["player_name"] = np.nan
+    if "player" in all_bets.columns:
+        all_bets["player_name"] = all_bets["player_name"].fillna(all_bets["player"])
 
     all_bets["edge_vs_book"] = all_bets["model_prob"] - all_bets["effective_implied_prob"]
     all_bets["expected_profit_per_unit"] = (
