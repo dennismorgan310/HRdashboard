@@ -240,6 +240,7 @@ if run_model_button:
                 odds_source,
                 oddsshopper_state,
                 oddsshopper_browser_session,
+                manual_odds_api_key,
             )
             st.session_state["odds_raw_df"] = odds_raw_df
             st.session_state["odds_features_df"] = odds_features_df
