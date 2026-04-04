@@ -360,9 +360,15 @@ if use_preferred_buckets:
     all_bets_df = all_bets_df[all_bets_df["odds_bucket"].astype(str).isin(PREFERRED_ALLOWED_BUCKETS)].copy()
 all_bets_display_df = all_bets_df.copy()
 all_bets_display_df["Pitcher"] = all_bets_display_df.apply(
-    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name"),
+    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name") or "TBD",
     axis=1,
 )
+all_bets_display_df["batting_team"] = all_bets_display_df["batting_team"].fillna("Unknown")
+all_bets_display_df["Model %"] = all_bets_display_df["model_prob"] * 100
+all_bets_display_df["Market %"] = all_bets_display_df["market_implied_prob"] * 100
+all_bets_display_df["Mean %"] = all_bets_display_df["mean_implied_prob"] * 100
+all_bets_display_df["Book %"] = all_bets_display_df["effective_implied_prob"] * 100
+all_bets_display_df["Edge"] = all_bets_display_df["edge_vs_book"] * 100
 all_bets_display_df = all_bets_display_df.drop(columns=[
     "game_date",
     "game_time_utc",
@@ -371,6 +377,11 @@ all_bets_display_df = all_bets_display_df.drop(columns=[
     "opposing_pitcher_name",
     "p_throws",
     "boost_applied",
+    "effective_implied_prob",
+    "edge_vs_book",
+    "model_prob",
+    "market_implied_prob",
+    "mean_implied_prob",
 ], errors="ignore")
 all_bets_display_df = all_bets_display_df.rename(columns={
     "player_name": "Player",
@@ -388,9 +399,9 @@ all_bets_display_df = all_bets_display_df.rename(columns={
 })
 all_bets_display_df = all_bets_display_df[[
     col for col in [
-        "Player", "Team", "Pitcher", "Book", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
-        "Book %", "books_available", "model_prob", "market_implied_prob", "mean_implied_prob", "Edge",
-        "expected_profit_per_unit", "First pitch ET", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
+        "First pitch ET", "Player", "Team", "Pitcher", "Book", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
+        "Book %", "books_available", "Model %", "Market %", "Mean %", "Edge",
+        "expected_profit_per_unit", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
     ] if col in all_bets_display_df.columns
 ]]
 st.dataframe(
@@ -398,11 +409,11 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
     column_config={
-        "model_prob": st.column_config.NumberColumn("Model %", format="%.1f%%"),
-        "Book %": st.column_config.NumberColumn("Book %", format="%.1f%%"),
-        "market_implied_prob": st.column_config.NumberColumn("Market %", format="%.1f%%"),
-        "mean_implied_prob": st.column_config.NumberColumn("Mean %", format="%.1f%%"),
-        "Edge": st.column_config.NumberColumn("Edge", format="%.1f%%"),
+        "Model %": st.column_config.NumberColumn("Model %", format="%.1f"),
+        "Book %": st.column_config.NumberColumn("Book %", format="%.1f"),
+        "Market %": st.column_config.NumberColumn("Market %", format="%.1f"),
+        "Mean %": st.column_config.NumberColumn("Mean %", format="%.1f"),
+        "Edge": st.column_config.NumberColumn("Edge", format="%.1f"),
         "expected_profit_per_unit": st.column_config.NumberColumn("EV/unit", format="%.3f"),
         "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
         "temperature_f": st.column_config.NumberColumn("Temp F", format="%.1f"),
@@ -414,9 +425,15 @@ st.dataframe(
 st.subheader("Best Bets")
 display_df = filtered_df.copy().reset_index(drop=True)
 display_df["Pitcher"] = display_df.apply(
-    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name"),
+    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name") or "TBD",
     axis=1,
 )
+display_df["batting_team"] = display_df["batting_team"].fillna("Unknown")
+display_df["Model %"] = display_df["model_prob"] * 100
+display_df["Market %"] = display_df["market_implied_prob"] * 100
+display_df["Mean %"] = display_df["mean_implied_prob"] * 100
+display_df["Book %"] = display_df["best_book_implied_prob"] * 100
+display_df["Edge"] = display_df["edge_best_book"] * 100
 display_df["best_book_boosted_odds"] = display_df["best_book_odds"]
 display_df = display_df.drop(columns=[
     "game_date",
@@ -428,6 +445,11 @@ display_df = display_df.drop(columns=[
     "p_throws",
     "opposing_pitcher_name",
     "best_book_odds",
+    "best_book_implied_prob",
+    "edge_best_book",
+    "model_prob",
+    "market_implied_prob",
+    "mean_implied_prob",
 ], errors="ignore")
 display_df = display_df.rename(columns={
     "player_name": "Player",
@@ -444,9 +466,9 @@ display_df = display_df.rename(columns={
 display_df.insert(0, "select", False)
 display_df = display_df[[
     col for col in [
-        "select", "Player", "Team", "Pitcher", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
-        "model_prob", "Book %", "market_implied_prob", "mean_implied_prob", "Edge",
-        "expected_profit_per_unit", "First pitch ET", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
+        "select", "First pitch ET", "Player", "Team", "Pitcher", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
+        "Model %", "Book %", "Market %", "Mean %", "Edge",
+        "expected_profit_per_unit", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
     ] if col in display_df.columns
 ]]
 
@@ -458,11 +480,11 @@ edited_df = st.data_editor(
     column_config={
         "select": st.column_config.CheckboxColumn("Select"),
         "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
-        "model_prob": st.column_config.NumberColumn("Model %", format="%.1f%%"),
-        "Book %": st.column_config.NumberColumn("Book %", format="%.1f%%"),
-        "market_implied_prob": st.column_config.NumberColumn("Market %", format="%.1f%%"),
-        "mean_implied_prob": st.column_config.NumberColumn("Mean %", format="%.1f%%"),
-        "Edge": st.column_config.NumberColumn("Edge", format="%.1f%%"),
+        "Model %": st.column_config.NumberColumn("Model %", format="%.1f"),
+        "Book %": st.column_config.NumberColumn("Book %", format="%.1f"),
+        "Market %": st.column_config.NumberColumn("Market %", format="%.1f"),
+        "Mean %": st.column_config.NumberColumn("Mean %", format="%.1f"),
+        "Edge": st.column_config.NumberColumn("Edge", format="%.1f"),
         "expected_profit_per_unit": st.column_config.NumberColumn("EV/unit", format="%.3f"),
         "temperature_f": st.column_config.NumberColumn("Temp F", format="%.1f"),
         "wind_speed_mph": st.column_config.NumberColumn("Wind MPH", format="%.1f"),
