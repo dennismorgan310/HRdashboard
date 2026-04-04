@@ -377,15 +377,39 @@ all_bets_display_df = all_bets_display_df.rename(columns={
     "game_time_et": "First pitch ET",
     "batting_team": "Team",
     "bookmaker": "Book",
-    "bookmaker_title": "Sportsbook",
+    "bookmaker_title": "Best Book",
     "price": "Raw Odds",
     "effective_price": "Boosted Odds",
     "effective_implied_prob": "Book %",
     "liquidity": "Liquidity",
     "wind_direction": "Wind Dir",
     "edge_vs_book": "Edge",
+    "best_book_title": "Best Book",
 })
-st.dataframe(all_bets_display_df, use_container_width=True, hide_index=True)
+all_bets_display_df = all_bets_display_df[[
+    col for col in [
+        "Player", "Team", "Pitcher", "Book", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
+        "Book %", "books_available", "model_prob", "market_implied_prob", "mean_implied_prob", "Edge",
+        "expected_profit_per_unit", "First pitch ET", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
+    ] if col in all_bets_display_df.columns
+]]
+st.dataframe(
+    all_bets_display_df,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "model_prob": st.column_config.NumberColumn("Model %", format="%.1f%%"),
+        "Book %": st.column_config.NumberColumn("Book %", format="%.1f%%"),
+        "market_implied_prob": st.column_config.NumberColumn("Market %", format="%.1f%%"),
+        "mean_implied_prob": st.column_config.NumberColumn("Mean %", format="%.1f%%"),
+        "Edge": st.column_config.NumberColumn("Edge", format="%.1f%%"),
+        "expected_profit_per_unit": st.column_config.NumberColumn("EV/unit", format="%.3f"),
+        "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
+        "temperature_f": st.column_config.NumberColumn("Temp F", format="%.1f"),
+        "wind_speed_mph": st.column_config.NumberColumn("Wind MPH", format="%.1f"),
+        "Liquidity": st.column_config.NumberColumn("Liquidity", format="%.0f"),
+    },
+)
 
 st.subheader("Best Bets")
 display_df = filtered_df.copy().reset_index(drop=True)
@@ -409,11 +433,21 @@ display_df = display_df.rename(columns={
     "player_name": "Player",
     "game_time_et": "First pitch ET",
     "batting_team": "Team",
+    "best_book_title": "Best Book",
     "wind_direction": "Wind Dir",
     "best_book_raw_odds": "Raw Odds",
     "best_book_boosted_odds": "Boosted Odds",
+    "best_book_implied_prob": "Book %",
     "best_liquidity": "Liquidity",
+    "edge_best_book": "Edge",
 })
+display_df = display_df[[
+    col for col in [
+        "select", "Player", "Team", "Pitcher", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
+        "model_prob", "Book %", "market_implied_prob", "mean_implied_prob", "Edge",
+        "expected_profit_per_unit", "First pitch ET", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
+    ] if col in display_df.columns or col == "select"
+]]
 display_df.insert(0, "select", False)
 
 edited_df = st.data_editor(
@@ -424,9 +458,11 @@ edited_df = st.data_editor(
     column_config={
         "select": st.column_config.CheckboxColumn("Select"),
         "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
-        "model_prob": st.column_config.NumberColumn("Model %", format="%.3f"),
-        "best_book_implied_prob": st.column_config.NumberColumn("Book %", format="%.3f"),
-        "edge_best_book": st.column_config.NumberColumn("Edge", format="%.3f"),
+        "model_prob": st.column_config.NumberColumn("Model %", format="%.1f%%"),
+        "Book %": st.column_config.NumberColumn("Book %", format="%.1f%%"),
+        "market_implied_prob": st.column_config.NumberColumn("Market %", format="%.1f%%"),
+        "mean_implied_prob": st.column_config.NumberColumn("Mean %", format="%.1f%%"),
+        "Edge": st.column_config.NumberColumn("Edge", format="%.1f%%"),
         "expected_profit_per_unit": st.column_config.NumberColumn("EV/unit", format="%.3f"),
         "temperature_f": st.column_config.NumberColumn("Temp F", format="%.1f"),
         "wind_speed_mph": st.column_config.NumberColumn("Wind MPH", format="%.1f"),
@@ -435,18 +471,20 @@ edited_df = st.data_editor(
 )
 
 selected_positions = edited_df.index[edited_df["select"]].tolist()
-if len(selected_positions) > 1:
-    st.warning("Select one bet to populate the copy box.")
-
-selected_row = filtered_df.iloc[selected_positions[0]] if len(selected_positions) == 1 else filtered_df.iloc[0]
+selected_rows = filtered_df.iloc[selected_positions].copy() if selected_positions else filtered_df.iloc[[0]].copy()
 
 st.subheader("Copy Box")
 unit_size = 0.25 if early_mode else 1.0
-social_text = format_bet_for_social(selected_row, unit_size=unit_size)
-st.text_area("Selected bet text", value=social_text, height=120)
+selected_text_rows = [
+    format_bet_for_social(row, unit_size=unit_size, boost_pct=float(boost_pct))
+    for _, row in selected_rows.iterrows()
+]
+social_text = "
+".join(selected_text_rows)
+st.text_area("Selected bet text", value=social_text, height=max(120, 32 * len(selected_text_rows) + 40))
 
 with st.expander("Selected Bet Details", expanded=True):
-    st.write(selected_row.to_frame().rename(columns={selected_row.name: "value"}))
+    st.write(selected_rows)
 
 with st.expander("Pulled Inputs"):
     st.markdown("**Probable Pitchers / Matchups**")

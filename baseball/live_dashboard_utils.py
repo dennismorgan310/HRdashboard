@@ -931,12 +931,16 @@ def build_all_loaded_bets_table(
     return all_bets
 
 
-def format_bet_for_social(row: pd.Series, unit_size: float = 1.0) -> str:
+def format_bet_for_social(row: pd.Series, unit_size: float = 1.0, boost_pct: float = 0.0) -> str:
     odds_str = (
         f"{int(row['best_book_odds']):+d}"
         if pd.notna(row.get("best_book_odds"))
         else "N/A"
     )
-    book = row.get("best_book_title") or row.get("best_book") or "book"
+    book = row.get("best_book_title") or row.get("Best Book") or row.get("best_book") or "book"
+    player = row.get("player_name") or row.get("Player") or "Player"
     unit_str = f"{unit_size:.2f}".rstrip("0").rstrip(".")
-    return f"{row['player_name']} to homer {odds_str} on {book} {unit_str} u"
+    boosted = bool(row.get("boost_applied", False))
+    if boosted and boost_pct > 0:
+        return f"{player} to homer boosted {boost_pct:.0f}% to {odds_str} on {book} {unit_str} u"
+    return f"{player} to homer {odds_str} on {book} {unit_str} u"
