@@ -698,28 +698,23 @@ def fill_pitcher_context_from_batting_team(df: pd.DataFrame) -> pd.DataFrame:
     if "p_throws" not in working.columns:
         working["p_throws"] = np.nan
 
-    working["opposing_pitcher_name"] = working["opposing_pitcher_name"].fillna(
-        np.where(
-            working["batting_team"] == working["away_team"],
-            working.get("home_probable_pitcher"),
-            np.where(
-                working["batting_team"] == working["home_team"],
-                working.get("away_probable_pitcher"),
-                np.nan,
-            ),
-        )
-    )
-    working["p_throws"] = working["p_throws"].fillna(
-        np.where(
-            working["batting_team"] == working["away_team"],
-            working.get("home_pitcher_throws"),
-            np.where(
-                working["batting_team"] == working["home_team"],
-                working.get("away_pitcher_throws"),
-                np.nan,
-            ),
-        )
-    )
+    missing_pitcher = working["opposing_pitcher_name"].isna()
+    away_batting = working["batting_team"] == working["away_team"]
+    home_batting = working["batting_team"] == working["home_team"]
+    working.loc[missing_pitcher & away_batting, "opposing_pitcher_name"] = working.loc[
+        missing_pitcher & away_batting, "home_probable_pitcher"
+    ]
+    working.loc[missing_pitcher & home_batting, "opposing_pitcher_name"] = working.loc[
+        missing_pitcher & home_batting, "away_probable_pitcher"
+    ]
+
+    missing_throws = working["p_throws"].isna()
+    working.loc[missing_throws & away_batting, "p_throws"] = working.loc[
+        missing_throws & away_batting, "home_pitcher_throws"
+    ]
+    working.loc[missing_throws & home_batting, "p_throws"] = working.loc[
+        missing_throws & home_batting, "away_pitcher_throws"
+    ]
     return working
 
 
