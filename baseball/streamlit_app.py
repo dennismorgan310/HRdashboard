@@ -441,14 +441,14 @@ display_df = display_df.rename(columns={
     "best_liquidity": "Liquidity",
     "edge_best_book": "Edge",
 })
+display_df.insert(0, "select", False)
 display_df = display_df[[
     col for col in [
         "select", "Player", "Team", "Pitcher", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
         "model_prob", "Book %", "market_implied_prob", "mean_implied_prob", "Edge",
         "expected_profit_per_unit", "First pitch ET", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
-    ] if col in display_df.columns or col == "select"
+    ] if col in display_df.columns
 ]]
-display_df.insert(0, "select", False)
 
 edited_df = st.data_editor(
     display_df,
