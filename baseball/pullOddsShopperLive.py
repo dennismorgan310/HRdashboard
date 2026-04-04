@@ -106,6 +106,28 @@ def _parse_american_odds(value) -> float | None:
         return None
 
 
+def _parse_liquidity(book: dict) -> float | None:
+    for key in [
+        "availableLiquidity",
+        "liquidity",
+        "available_liquidity",
+        "maxStake",
+        "maxWager",
+        "maxBet",
+        "availableToBet",
+        "limit",
+        "volume",
+    ]:
+        value = book.get(key)
+        if value is None or pd.isna(value):
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _split_event_name(event_name: str) -> tuple[str | None, str | None]:
     if " @ " not in event_name:
         return None, None
@@ -311,6 +333,7 @@ def fetch_oddsshopper_live_hr_odds(
                             "side": side_label,
                             "price": price,
                             "point": line,
+                            "liquidity": _parse_liquidity(book),
                             "market_last_update": None,
                             "book_last_update": None,
                             "deep_link_url": book.get("deepLinkUrl"),

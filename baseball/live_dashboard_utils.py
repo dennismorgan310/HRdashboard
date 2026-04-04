@@ -763,6 +763,7 @@ def build_ranked_bets_table(
                 "price": "best_book_raw_odds",
                 "effective_price": "best_book_odds",
                 "effective_implied_prob": "best_book_implied_prob",
+                "liquidity": "best_liquidity",
                 "game_time_utc": "best_game_time_utc",
             }
         )
@@ -782,6 +783,7 @@ def build_ranked_bets_table(
             "best_book_raw_odds",
             "best_book_odds",
             "best_book_implied_prob",
+            "best_liquidity",
         ]],
         on=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
         how="left",
@@ -823,6 +825,7 @@ def build_ranked_bets_table(
         "best_book_raw_odds",
         "best_book_odds",
         "best_book_implied_prob",
+        "best_liquidity",
         "boost_applied",
         "books_available",
         "model_prob",
@@ -873,6 +876,7 @@ def build_all_loaded_bets_table(
             "price",
             "effective_price",
             "effective_implied_prob",
+            "liquidity",
             "boost_applied",
         ]],
         on=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
@@ -906,6 +910,7 @@ def build_all_loaded_bets_table(
         "price",
         "effective_price",
         "effective_implied_prob",
+        "liquidity",
         "boost_applied",
         "books_available",
         "model_prob",
@@ -926,18 +931,12 @@ def build_all_loaded_bets_table(
     return all_bets
 
 
-def format_bet_for_social(row: pd.Series) -> str:
+def format_bet_for_social(row: pd.Series, unit_size: float = 1.0) -> str:
     odds_str = (
         f"{int(row['best_book_odds']):+d}"
         if pd.notna(row.get("best_book_odds"))
         else "N/A"
     )
-    temp = f"{row['temperature_f']:.0f}F" if pd.notna(row.get("temperature_f")) else "weather n/a"
-    wind = row.get("wind_direction") or "unknown wind"
-    edge = f"{row['edge_best_book'] * 100:.1f}%" if pd.notna(row.get("edge_best_book")) else "n/a"
     book = row.get("best_book_title") or row.get("best_book") or "book"
-    return (
-        f"{row['player_name']} HR prop over 0.5 at {book} {odds_str} "
-        f"vs {row.get('opposing_pitcher_name') or 'TBD'} | model {row['model_prob']:.1%} "
-        f"| edge {edge} | {temp}, {wind}"
-    )
+    unit_str = f"{unit_size:.2f}".rstrip("0").rstrip(".")
+    return f"{row['player_name']} to homer {odds_str} on {book} {unit_str} u"

@@ -158,6 +158,11 @@ with st.sidebar:
     )
     boost_book = st.text_input("Boost bookmaker", value="draftkings")
     boost_pct = st.number_input("Boost percent", min_value=0.0, max_value=200.0, value=0.0, step=5.0)
+    early_mode = st.checkbox(
+        "Early mode (0.25u)",
+        value=target_date.month in {3, 4},
+        help="When enabled, copy text uses a flat 0.25 unit sizing.",
+    )
     min_edge = st.number_input("Min edge %", min_value=-20.0, max_value=100.0, value=2.0, step=0.5)
     min_books = st.number_input("Min books", min_value=1, max_value=20, value=1, step=1)
     use_preferred_buckets = st.checkbox(
@@ -305,6 +310,10 @@ if ranked_df.empty:
         })
     st.stop()
 
+current_et = pd.Timestamp.now(tz="America/New_York")
+if "game_time_et" in ranked_df.columns:
+    ranked_df = ranked_df[pd.to_datetime(ranked_df["game_time_et"], errors="coerce") > current_et].copy()
+
 ranked_df["odds_bucket"] = pd.cut(
     ranked_df["best_book_odds"],
     bins=ODDS_BUCKET_BINS,
@@ -338,6 +347,9 @@ all_bets_df = build_all_loaded_bets_table(
     boost_book=boost_book.strip() or None,
     boost_pct=float(boost_pct),
 )
+if "game_time_et" in all_bets_df.columns:
+    all_bets_df = all_bets_df[pd.to_datetime(all_bets_df["game_time_et"], errors="coerce") > current_et].copy()
+
 all_bets_df["odds_bucket"] = pd.cut(
     all_bets_df["effective_price"],
     bins=ODDS_BUCKET_BINS,
@@ -346,7 +358,34 @@ all_bets_df["odds_bucket"] = pd.cut(
 )
 if use_preferred_buckets:
     all_bets_df = all_bets_df[all_bets_df["odds_bucket"].astype(str).isin(PREFERRED_ALLOWED_BUCKETS)].copy()
-st.dataframe(all_bets_df, use_container_width=True, hide_index=True)
+all_bets_display_df = all_bets_df.copy()
+all_bets_display_df["Pitcher"] = all_bets_display_df.apply(
+    lambda row: f"{row['opposing_pitcher_name']}, {row['p_throws']}" if pd.notna(row.get("opposing_pitcher_name")) and pd.notna(row.get("p_throws")) else row.get("opposing_pitcher_name"),
+    axis=1,
+)
+all_bets_display_df = all_bets_display_df.drop(columns=[
+    "game_date",
+    "game_time_utc",
+    "home_team",
+    "away_team",
+    "opposing_pitcher_name",
+    "p_throws",
+    "boost_applied",
+], errors="ignore")
+all_bets_display_df = all_bets_display_df.rename(columns={
+    "player_name": "Player",
+    "game_time_et": "First pitch ET",
+    "batting_team": "Team",
+    "bookmaker": "Book",
+    "bookmaker_title": "Sportsbook",
+    "price": "Raw Odds",
+    "effective_price": "Boosted Odds",
+    "effective_implied_prob": "Book %",
+    "liquidity": "Liquidity",
+    "wind_direction": "Wind Dir",
+    "edge_vs_book": "Edge",
+})
+st.dataframe(all_bets_display_df, use_container_width=True, hide_index=True)
 
 st.subheader("Best Bets")
 display_df = filtered_df.copy().reset_index(drop=True)
@@ -373,6 +412,7 @@ display_df = display_df.rename(columns={
     "wind_direction": "Wind Dir",
     "best_book_raw_odds": "Raw Odds",
     "best_book_boosted_odds": "Boosted Odds",
+    "best_liquidity": "Liquidity",
 })
 display_df.insert(0, "select", False)
 
@@ -401,7 +441,8 @@ if len(selected_positions) > 1:
 selected_row = filtered_df.iloc[selected_positions[0]] if len(selected_positions) == 1 else filtered_df.iloc[0]
 
 st.subheader("Copy Box")
-social_text = format_bet_for_social(selected_row)
+unit_size = 0.25 if early_mode else 1.0
+social_text = format_bet_for_social(selected_row, unit_size=unit_size)
 st.text_area("Selected bet text", value=social_text, height=120)
 
 with st.expander("Selected Bet Details", expanded=True):
