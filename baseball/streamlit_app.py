@@ -479,8 +479,7 @@ selected_text_rows = [
     format_bet_for_social(row, unit_size=unit_size, boost_pct=float(boost_pct))
     for _, row in selected_rows.iterrows()
 ]
-social_text = "
-".join(selected_text_rows)
+social_text = "\n".join(selected_text_rows)
 st.text_area("Selected bet text", value=social_text, height=max(120, 32 * len(selected_text_rows) + 40))
 
 with st.expander("Selected Bet Details", expanded=True):
