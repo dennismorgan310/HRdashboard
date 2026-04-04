@@ -689,6 +689,40 @@ def apply_profit_boost_to_odds(odds: float | int | None, boost_pct: float) -> fl
     return profit_to_american(boosted_profit)
 
 
+def fill_pitcher_context_from_batting_team(df: pd.DataFrame) -> pd.DataFrame:
+    working = df.copy()
+    if "batting_team" not in working.columns:
+        working["batting_team"] = np.nan
+    if "opposing_pitcher_name" not in working.columns:
+        working["opposing_pitcher_name"] = np.nan
+    if "p_throws" not in working.columns:
+        working["p_throws"] = np.nan
+
+    working["opposing_pitcher_name"] = working["opposing_pitcher_name"].fillna(
+        np.where(
+            working["batting_team"] == working["away_team"],
+            working.get("home_probable_pitcher"),
+            np.where(
+                working["batting_team"] == working["home_team"],
+                working.get("away_probable_pitcher"),
+                np.nan,
+            ),
+        )
+    )
+    working["p_throws"] = working["p_throws"].fillna(
+        np.where(
+            working["batting_team"] == working["away_team"],
+            working.get("home_pitcher_throws"),
+            np.where(
+                working["batting_team"] == working["home_team"],
+                working.get("away_pitcher_throws"),
+                np.nan,
+            ),
+        )
+    )
+    return working
+
+
 def prepare_book_level_odds_rows(
     raw_odds_df: pd.DataFrame,
     boost_book: str | None = None,
@@ -717,6 +751,8 @@ def prepare_book_level_odds_rows(
     odds_rows["player_name_norm"] = (
         odds_rows["player"].apply(normalize_player_name).apply(apply_name_alias)
     )
+    if "player_team_abbr" not in odds_rows.columns:
+        odds_rows["player_team_abbr"] = np.nan
 
     odds_rows["effective_price"] = odds_rows["price"]
     if boost_book and boost_pct:
@@ -758,6 +794,7 @@ def build_ranked_bets_table(
         .rename(
             columns={
                 "player": "best_player_name",
+                "player_team_abbr": "best_player_team_abbr",
                 "bookmaker": "best_book",
                 "bookmaker_title": "best_book_title",
                 "price": "best_book_raw_odds",
@@ -777,6 +814,7 @@ def build_ranked_bets_table(
             "scheduled_game_no",
             "player_name_norm",
             "best_player_name",
+            "best_player_team_abbr",
             "best_game_time_utc",
             "best_book",
             "best_book_title",
@@ -797,6 +835,11 @@ def build_ranked_bets_table(
         ranked["player_name"] = np.nan
     if "best_player_name" in ranked.columns:
         ranked["player_name"] = ranked["player_name"].fillna(ranked["best_player_name"])
+    if "batting_team" not in ranked.columns:
+        ranked["batting_team"] = np.nan
+    if "best_player_team_abbr" in ranked.columns:
+        ranked["batting_team"] = ranked["batting_team"].fillna(ranked["best_player_team_abbr"])
+    ranked = fill_pitcher_context_from_batting_team(ranked)
 
     ranked["edge_best_book"] = ranked["model_prob"] - ranked["best_book_implied_prob"]
     ranked["expected_profit_per_unit"] = (
@@ -871,6 +914,7 @@ def build_all_loaded_bets_table(
             "scheduled_game_no",
             "player_name_norm",
             "player",
+            "player_team_abbr",
             "bookmaker",
             "bookmaker_title",
             "price",
@@ -889,6 +933,11 @@ def build_all_loaded_bets_table(
         all_bets["player_name"] = np.nan
     if "player" in all_bets.columns:
         all_bets["player_name"] = all_bets["player_name"].fillna(all_bets["player"])
+    if "batting_team" not in all_bets.columns:
+        all_bets["batting_team"] = np.nan
+    if "player_team_abbr" in all_bets.columns:
+        all_bets["batting_team"] = all_bets["batting_team"].fillna(all_bets["player_team_abbr"])
+    all_bets = fill_pitcher_context_from_batting_team(all_bets)
 
     all_bets["edge_vs_book"] = all_bets["model_prob"] - all_bets["effective_implied_prob"]
     all_bets["expected_profit_per_unit"] = (

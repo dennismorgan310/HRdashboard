@@ -301,6 +301,7 @@ def fetch_oddsshopper_live_hr_odds(
 
         for participant in event.get("participants", []):
             player_name = participant.get("name")
+            player_team_abbr = participant.get("abbreviation")
 
             for side in event.get("sides", []):
                 side_label = side.get("label")
@@ -330,6 +331,7 @@ def fetch_oddsshopper_live_hr_odds(
                             "bookmaker_title": book.get("sportsbookCode"),
                             "market_key": "batter_home_runs",
                             "player": player_name,
+                            "player_team_abbr": player_team_abbr,
                             "side": side_label,
                             "price": price,
                             "point": line,
