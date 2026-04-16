@@ -18,7 +18,7 @@ from live_dashboard_utils import (
     prepare_odds_features,
     score_live_candidates,
 )
-from pullOddsShopperLive import fetch_oddsshopper_live_hr_odds
+from pullOddsShopperLive import fetch_oddsshopper_live_hr_odds, get_oddsshopper_auth_diagnostics
 from pullLiveOdds import get_api_key_diagnostics
 
 
@@ -93,6 +93,7 @@ def pull_odds_cached(
             target_date=target_date,
             state=oddsshopper_state,
             sportsbook_filter=bookmakers or None,
+            cookie_header_override=(st.secrets.get("ODDSHOPPER_COOKIE_HEADER") if hasattr(st, "secrets") else None),
             use_browser_session=oddsshopper_browser_session,
         )
         if not oddsshopper_df.empty:
@@ -129,9 +130,16 @@ def ensure_state_defaults():
 ensure_state_defaults()
 
 st.title("MLB HR Live Dashboard")
+with st.expander("OddsShopper Diagnostics", expanded=False):
+    oddsshopper_diag = get_oddsshopper_auth_diagnostics()
+    st.write("Resolved source:", oddsshopper_diag["resolved_source"])
+    st.write("OddsShopper secret present:", oddsshopper_diag["secret_present"])
+    st.write("OddsShopper env present:", oddsshopper_diag["env_present"])
+    st.write("Local cookie file present:", oddsshopper_diag["file_present"])
+
 st.caption(
-    "Community Cloud deployment should use The Odds API via `ODDS_API_KEY` in Streamlit secrets. "
-    "OddsShopper browser-session login is local-only and is not expected to work reliably on Community Cloud."
+    "Community Cloud can use OddsShopper if you add `ODDSHOPPER_COOKIE_HEADER` to Streamlit secrets. "
+    "Browser-session login remains local-only."
 )
 
 with st.sidebar:
@@ -147,7 +155,7 @@ with st.sidebar:
     oddsshopper_state = st.text_input("OddsShopper state", value="PA")
     oddsshopper_browser_session = st.checkbox(
         "Use browser session for OddsShopper",
-        value=True,
+        value=False,
         help="Logs into OddsShopper in Chrome and fetches the odds API from that same browser session.",
     )
     manual_odds_api_key = st.text_input(
@@ -178,12 +186,13 @@ with st.sidebar:
     run_model_button = st.button("Run Model", type="primary", width="stretch")
     clear_live_cache_button = st.button("Clear Live Cache", width="stretch")
     st.caption(
-        "For authenticated OddsShopper pulls, either run "
-        "`python3 oddshopper_auth.py` once first to save cookies, or enable the browser-session option."
+        "For local OddsShopper pulls, either run `python3 oddshopper_auth.py` once to save cookies, "
+        "enable the browser-session option, or set `ODDSHOPPER_COOKIE_HEADER` in Streamlit secrets for Community Cloud."
     )
     if odds_source in {"OddsShopper", "Both"}:
         st.warning(
-            "OddsShopper is best treated as a local workflow. For Streamlit Community Cloud, use `Odds API` as the source."
+            "Community Cloud OddsShopper pulls should use `ODDSHOPPER_COOKIE_HEADER` in Streamlit secrets. "
+            "Browser-session mode is still local-only."
         )
 
 if clear_live_cache_button:

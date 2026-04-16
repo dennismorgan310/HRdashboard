@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
@@ -30,6 +31,47 @@ DEFAULT_MARKET_NAME = "Total Home Runs"
 DEFAULT_OUTPUT_DIR = Path("live_odds")
 LIVE_ODDS_PAGE_URL = "https://www.oddsshopper.com/liveodds/mlb/playerprops/Total-Home-Runs"
 COOKIE_HEADER_PATH = Path("oddshopper_cookie_header.txt")
+
+
+def _get_streamlit_secret(key: str):
+    try:
+        import streamlit as st
+        return st.secrets.get(key)
+    except Exception:
+        return None
+
+
+def get_oddsshopper_cookie_header(
+    path: Path = COOKIE_HEADER_PATH,
+    override: str | None = None,
+) -> str | None:
+    value = override or os.getenv("ODDSHOPPER_COOKIE_HEADER") or _get_streamlit_secret("ODDSHOPPER_COOKIE_HEADER")
+    if not value:
+        value = load_cookie_header(path)
+    if not value:
+        return None
+    value = str(value).strip()
+    if value.lower().startswith("cookie:"):
+        value = value.split(":", 1)[1].strip()
+    return value or None
+
+
+def get_oddsshopper_auth_diagnostics(path: Path = COOKIE_HEADER_PATH) -> dict:
+    env_present = bool(os.getenv("ODDSHOPPER_COOKIE_HEADER", "").strip())
+    secret_present = bool(str(_get_streamlit_secret("ODDSHOPPER_COOKIE_HEADER") or "").strip())
+    file_present = path.exists() and bool(path.read_text().strip())
+    resolved_source = (
+        "env" if env_present else
+        "streamlit_secrets" if secret_present else
+        "file" if file_present else
+        "missing"
+    )
+    return {
+        "resolved_source": resolved_source,
+        "env_present": env_present,
+        "secret_present": secret_present,
+        "file_present": file_present,
+    }
 
 
 def american_to_prob(odds):
@@ -235,6 +277,7 @@ def fetch_oddsshopper_live_hr_odds(
     sportsbook_filter: str | None = None,
     cookies_path: Path = COOKIES_PATH,
     cookie_header_path: Path = COOKIE_HEADER_PATH,
+    cookie_header_override: str | None = None,
     use_browser_session: bool = False,
     login_info_path: Path = LOGIN_INFO_PATH,
     login_url: str = LOGIN_URL,
@@ -258,7 +301,10 @@ def fetch_oddsshopper_live_hr_odds(
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
             ),
         })
-        raw_cookie_header = load_cookie_header(cookie_header_path)
+        raw_cookie_header = get_oddsshopper_cookie_header(
+            path=cookie_header_path,
+            override=cookie_header_override,
+        )
         if raw_cookie_header:
             session.headers["Cookie"] = raw_cookie_header
         else:
