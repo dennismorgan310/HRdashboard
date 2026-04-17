@@ -93,7 +93,6 @@ def pull_odds_cached(
             target_date=target_date,
             state=oddsshopper_state,
             sportsbook_filter=bookmakers or None,
-            cookie_header_override=(st.secrets.get("ODDSHOPPER_COOKIE_HEADER") if hasattr(st, "secrets") else None),
             use_browser_session=oddsshopper_browser_session,
         )
         if not oddsshopper_df.empty:
