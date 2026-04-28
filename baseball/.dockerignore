@@ -7,4 +7,8 @@ oddshopper_cookies.json
 oddshopper_cookie_header.txt
 live_odds/
 HRdashboard/
+mlb_hr_odds_chunks/
+weather_checkpoints/
 live_feature_cache/statcast_history.parquet
+*.csv
+output.txt

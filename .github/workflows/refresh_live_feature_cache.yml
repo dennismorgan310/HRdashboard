@@ -1,0 +1,65 @@
+name: Refresh live feature cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: "Target date in YYYY-MM-DD format. Defaults to today's date in the runner timezone."
+        required: false
+        type: string
+  schedule:
+    - cron: "0 14 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-cache:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: baseball
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: baseball/requirements.txt
+
+      - name: Restore Statcast history cache
+        uses: actions/cache@v4
+        with:
+          path: baseball/live_feature_cache/statcast_history.parquet
+          key: statcast-history-${{ github.run_id }}
+          restore-keys: |
+            statcast-history-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Resolve target date
+        id: target-date
+        run: |
+          if [ -n "${{ inputs.target_date }}" ]; then
+            echo "value=${{ inputs.target_date }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=$(TZ=America/New_York date +%F)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build live feature cache
+        run: python build_live_feature_cache.py --date "${{ steps.target-date.outputs.value }}"
+
+      - name: Commit refreshed cache
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add live_feature_cache/latest_batter_features.parquet live_feature_cache/latest_pitcher_features.parquet live_feature_cache/latest_pitcher_split_features.parquet live_feature_cache/metadata.json
+          git diff --cached --quiet || git commit -m "Refresh live feature cache"
+          git push
