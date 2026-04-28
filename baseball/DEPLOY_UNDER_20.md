@@ -36,8 +36,8 @@ Do not deploy or commit:
 
 1. Push this repo to GitHub.
 2. Create a Railway project from the GitHub repo.
-3. Set the project root directory to `baseball`.
-4. Railway should detect and build the `Dockerfile`.
+3. Railway should detect and build the root `Dockerfile`.
+4. Optional: set the project root directory to `baseball` if you want Railway to use `baseball/Dockerfile` instead.
 5. Add environment variables:
 
 ```text
