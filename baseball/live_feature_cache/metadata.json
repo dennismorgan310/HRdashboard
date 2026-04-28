@@ -1,7 +1,9 @@
 {
-  "built_for_target_date": "2026-03-26",
-  "built_at_utc": "2026-03-27T03:44:59Z",
+  "built_for_target_date": "2026-04-28",
+  "built_at_utc": "2026-04-28T16:14:10Z",
   "latest_batter_rows": 2636,
-  "latest_pitcher_rows": 2222,
-  "latest_pitcher_split_rows": 4261
+  "latest_pitcher_rows": 2239,
+  "latest_pitcher_split_rows": 4293,
+  "statcast_history_rows": 2471519,
+  "statcast_history_through": "2026-04-27"
 }
