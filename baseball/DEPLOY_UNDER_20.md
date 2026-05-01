@@ -63,6 +63,14 @@ Paste the printed cookie value into Railway's `ODDSHOPPER_COOKIE_HEADER` environ
 
 The repo includes `.github/workflows/refresh_live_feature_cache.yml`, which can refresh the small latest feature cache files daily or on demand.
 
+The Railway app also has a sidebar **Build Feature Cache** button. Set the app's **Target date** first, then click **Build Feature Cache** to run the same cache builder inside Railway. For example, selecting `2026-04-29` and clicking the button is the app version of:
+
+```bash
+python3 build_live_feature_cache.py --date 2026-04-29
+```
+
+Railway's filesystem is temporary, so a cache built this way can disappear after a redeploy or service restart. Use the GitHub Actions flow below when you want the refreshed cache committed back to the repo and redeployed permanently.
+
 To run it manually:
 
 1. Open the GitHub repo.

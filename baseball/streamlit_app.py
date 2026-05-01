@@ -6,6 +6,7 @@ import streamlit as st
 from live_dashboard_utils import (
     DEFAULT_BOOKMAKERS,
     build_all_loaded_bets_table,
+    build_and_save_live_feature_cache,
     build_game_roster_map,
     build_live_candidate_rows,
     build_live_matchups,
@@ -182,6 +183,7 @@ with st.sidebar:
     pull_pitchers_button = st.button("Pull Pitchers", width="stretch")
     pull_weather_button = st.button("Pull Weather", width="stretch")
     pull_odds_button = st.button("Pull Odds", width="stretch")
+    build_feature_cache_button = st.button("Build Feature Cache", width="stretch")
     run_model_button = st.button("Run Model", type="primary", width="stretch")
     clear_live_cache_button = st.button("Clear Live Cache", width="stretch")
     st.caption(
@@ -199,7 +201,23 @@ if clear_live_cache_button:
     pull_weather_cached.clear()
     pull_odds_cached.clear()
     pull_rosters_cached.clear()
+    get_precomputed_feature_tables_cached.clear()
     st.success("Cleared cached live pulls.")
+
+if build_feature_cache_button:
+    with st.spinner(f"Building feature cache for {target_date.isoformat()}..."):
+        try:
+            cache_metadata = build_and_save_live_feature_cache(target_date=target_date)
+        except Exception as exc:
+            st.error(f"Feature cache build failed: {exc}")
+            st.stop()
+        get_precomputed_feature_tables_cached.clear()
+        st.session_state["feature_cache_metadata"] = cache_metadata
+    st.success(
+        "Built feature cache: "
+        f"{cache_metadata.get('latest_batter_rows', 0):,} batters, "
+        f"{cache_metadata.get('latest_pitcher_rows', 0):,} pitchers."
+    )
 
 if pull_pitchers_button:
     with st.spinner("Pulling probable pitchers..."):
