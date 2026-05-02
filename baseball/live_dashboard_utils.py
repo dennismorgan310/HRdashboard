@@ -801,23 +801,30 @@ def build_ranked_bets_table(
         )
     )
 
+    # Ensure best_liquidity exists even if the source data had no liquidity column
+    if "best_liquidity" not in best_books.columns:
+        best_books["best_liquidity"] = np.nan
+
+    _best_books_cols = [
+        "game_date",
+        "home_team",
+        "away_team",
+        "scheduled_game_no",
+        "player_name_norm",
+        "best_player_name",
+        "best_player_team_abbr",
+        "best_game_time_utc",
+        "best_book",
+        "best_book_title",
+        "best_book_raw_odds",
+        "best_book_odds",
+        "best_book_implied_prob",
+        "best_liquidity",
+    ]
+    _best_books_cols = [c for c in _best_books_cols if c in best_books.columns]
+
     ranked = scored_df.merge(
-        best_books[[
-            "game_date",
-            "home_team",
-            "away_team",
-            "scheduled_game_no",
-            "player_name_norm",
-            "best_player_name",
-            "best_player_team_abbr",
-            "best_game_time_utc",
-            "best_book",
-            "best_book_title",
-            "best_book_raw_odds",
-            "best_book_odds",
-            "best_book_implied_prob",
-            "best_liquidity",
-        ]],
+        best_books[_best_books_cols],
         on=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
         how="left",
     )
@@ -900,24 +907,30 @@ def build_all_loaded_bets_table(
         boost_pct=boost_pct,
     )
 
+    if "liquidity" not in odds_rows.columns:
+        odds_rows["liquidity"] = np.nan
+
+    _all_bets_cols = [
+        "game_date",
+        "game_time_utc",
+        "home_team",
+        "away_team",
+        "scheduled_game_no",
+        "player_name_norm",
+        "player",
+        "player_team_abbr",
+        "bookmaker",
+        "bookmaker_title",
+        "price",
+        "effective_price",
+        "effective_implied_prob",
+        "liquidity",
+        "boost_applied",
+    ]
+    _all_bets_cols = [c for c in _all_bets_cols if c in odds_rows.columns]
+
     all_bets = scored_df.merge(
-        odds_rows[[
-            "game_date",
-            "game_time_utc",
-            "home_team",
-            "away_team",
-            "scheduled_game_no",
-            "player_name_norm",
-            "player",
-            "player_team_abbr",
-            "bookmaker",
-            "bookmaker_title",
-            "price",
-            "effective_price",
-            "effective_implied_prob",
-            "liquidity",
-            "boost_applied",
-        ]],
+        odds_rows[_all_bets_cols],
         on=["game_date", "home_team", "away_team", "scheduled_game_no", "player_name_norm"],
         how="inner",
     )
