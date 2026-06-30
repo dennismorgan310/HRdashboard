@@ -178,6 +178,11 @@ with st.sidebar:
         value=True,
         help="Use the preferred live filter from backtesting: +401 to +500 and +701 to +1000.",
     )
+    require_100_season_pa = st.checkbox(
+        "Only 100+ season PA",
+        value=False,
+        help="Hide Best Bets for players with fewer than 100 plate appearances this season.",
+    )
 
     st.header("Actions")
     pull_pitchers_button = st.button("Pull Pitchers", width="stretch")
@@ -350,6 +355,12 @@ ranked_df["odds_bucket"] = pd.cut(
 if use_preferred_buckets:
     ranked_df = ranked_df[ranked_df["odds_bucket"].astype(str).isin(PREFERRED_ALLOWED_BUCKETS)].copy()
 
+if require_100_season_pa:
+    if "season_pa" in ranked_df.columns:
+        ranked_df = ranked_df[pd.to_numeric(ranked_df["season_pa"], errors="coerce").fillna(0) >= 100].copy()
+    else:
+        st.warning("100+ season PA filter needs a rebuilt feature cache. Click Build Feature Cache, then Run Model.")
+
 filtered_df = ranked_df[
     (ranked_df["edge_best_book"] >= min_edge / 100.0) &
     (ranked_df["books_available"] >= min_books)
@@ -481,6 +492,7 @@ display_df = display_df.rename(columns={
     "player_name": "Player",
     "game_time_et": "First pitch ET",
     "batting_team": "Team",
+    "season_pa": "Season PA",
     "best_book_title": "Best Book",
     "wind_direction": "Wind Dir",
     "best_book_raw_odds": "Raw Odds",
@@ -493,7 +505,7 @@ display_df.insert(0, "select", False)
 display_df = display_df[[
     col for col in [
         "select", "First pitch ET", "Player", "Team", "Pitcher", "Best Book", "Raw Odds", "Boosted Odds", "Liquidity",
-        "Model %", "Book %", "Market %", "Mean %", "Edge",
+        "Season PA", "Model %", "Book %", "Market %", "Mean %", "Edge",
         "expected_profit_per_unit", "odds_bucket", "temperature_f", "wind_speed_mph", "Wind Dir"
     ] if col in display_df.columns
 ]]
@@ -507,6 +519,7 @@ edited_df = st.data_editor(
         "select": st.column_config.CheckboxColumn("Select"),
         "First pitch ET": st.column_config.DatetimeColumn("First pitch ET", format="MMM D, YYYY h:mm A"),
         "Model %": st.column_config.NumberColumn("Model %", format="%.1f"),
+        "Season PA": st.column_config.NumberColumn("Season PA", format="%.0f"),
         "Book %": st.column_config.NumberColumn("Book %", format="%.1f"),
         "Market %": st.column_config.NumberColumn("Market %", format="%.1f"),
         "Mean %": st.column_config.NumberColumn("Mean %", format="%.1f"),

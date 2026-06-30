@@ -377,6 +377,7 @@ def add_hitter_rolling_features(game_df: pd.DataFrame) -> pd.DataFrame:
     season_group = game_df.groupby(["batter", "season"])
     season_hr_sum = season_group["hr"].cumsum() - game_df["hr"]
     season_pa_sum = season_group["pa"].cumsum() - game_df["pa"]
+    game_df["season_pa"] = season_pa_sum
 
     game_df["season_hr_rate"] = np.where(
         season_pa_sum > 0,
